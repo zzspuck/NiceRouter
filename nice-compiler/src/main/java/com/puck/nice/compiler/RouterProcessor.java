@@ -2,6 +2,7 @@ package com.puck.nice.compiler;
 
 import com.google.auto.service.AutoService;
 import com.puck.nice.compiler.utils.Constant;
+import com.puck.nice.compiler.utils.Log;
 
 import java.util.Set;
 
@@ -28,12 +29,13 @@ import javax.lang.model.element.TypeElement;
  * 注册给哪些注解的  替代 {@link AbstractProcessor#getSupportedAnnotationTypes()} 函数
  */
 @SupportedAnnotationTypes(Constant.ANNOTATION_TYPE_ROUTE)
-
 public class RouterProcessor extends AbstractProcessor {
+    private Log log;
 
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
+        log = Log.newLog(processingEnv.getMessager());
     }
 
     @Override
