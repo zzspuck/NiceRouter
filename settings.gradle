@@ -16,3 +16,4 @@ rootProject.name = "NiceRouter"
 include ':app'
 include ':nice-annotation'
 include ':nice-compiler'
+include ':nice_core'

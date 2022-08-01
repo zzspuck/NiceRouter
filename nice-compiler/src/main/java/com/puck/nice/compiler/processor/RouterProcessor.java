@@ -2,10 +2,14 @@ package com.puck.nice.compiler.processor;
 
 import com.google.auto.service.AutoService;
 import com.puck.nice.annotation.Route;
+import com.puck.nice.annotation.modle.RouteMeta;
 import com.puck.nice.compiler.utils.Constant;
 import com.puck.nice.compiler.utils.Log;
 import com.puck.nice.compiler.utils.Utils;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -18,6 +22,7 @@ import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.annotation.processing.SupportedOptions;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 
@@ -52,6 +57,10 @@ public class RouterProcessor extends AbstractProcessor {
      */
     private Filer filerUtils;
     private String moduleName;
+    /**
+     * 分组 key:组名 value:对应组的路由信息
+     */
+    private Map<String, List<RouteMeta>> groupMap = new HashMap<>();
 
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
@@ -92,5 +101,57 @@ public class RouterProcessor extends AbstractProcessor {
 
     private void processRouter(Set<? extends Element> elementsAnnotatedWith) {
 
+        TypeElement activity = elementUtils.getTypeElement(Constant.ACTIVITY);
+        TypeElement service = elementUtils.getTypeElement(Constant.ISERVICE);
+        for (Element element : elementsAnnotatedWith) {
+            RouteMeta routeMeta;
+            // 类信息
+            TypeMirror typeMirror = element.asType();
+            log.i("Router class: " + typeMirror.toString());
+            Route route = element.getAnnotation(Route.class);
+            if (typeUtils.isSubtype(typeMirror, activity.asType())) {
+                routeMeta = new RouteMeta(RouteMeta.Type.ACTIVITY, route, element);
+            } else if (typeUtils.isSubtype(typeMirror, service.asType())) {
+                routeMeta = new RouteMeta(RouteMeta.Type.ISERVICE, route, element);
+            } else {
+                throw new RuntimeException("just support Activity or Iservice Route: ");
+            }
+
+            categories(routeMeta);
+        }
+    }
+
+    private void categories(RouteMeta routeMeta) {
+        if (routeVerify(routeMeta)){
+            log.i("Group : " + routeMeta.getGroup() + " path=" + routeMeta.getPath());
+            List<RouteMeta> routeMetas = groupMap.get(routeMeta.getGroup());
+            if (Utils.isEmpty(routeMetas)){
+                routeMetas = new ArrayList<>();
+                routeMetas.add(routeMeta);
+                groupMap.put(routeMeta.getGroup(), routeMetas);
+            } else  {
+                routeMetas.add(routeMeta);
+            }
+        } else {
+            log.i("Group info error:" + routeMeta.getPath());
+        }
+    }
+
+    private boolean routeVerify(RouteMeta routeMeta) {
+        String path = routeMeta.getPath();
+        String group = routeMeta.getGroup();
+        // 必须以/ 开始来指示路由地址
+        if (!path.startsWith("/")){
+            return false;
+        }
+        //如果group没有设置 我们从path中获得group
+        if (Utils.isEmpty(group)){
+            String defaultGroup = path.substring(1, path.indexOf("/", 1));
+            if (Utils.isEmpty(defaultGroup)){
+                return false;
+            }
+            routeMeta.setGroup(defaultGroup);
+        }
+        return true;
     }
 }
