@@ -1,12 +1,12 @@
 plugins {
-    id 'java-library'
+    id("com.android.library")
 }
 
-java {
-    sourceCompatibility = JavaVersion.VERSION_1_7
-    targetCompatibility = JavaVersion.VERSION_1_7
-}
 
 dependencies {
+    def appcompat_version = "1.4.2"
     api(project(':nice-annotation'))
+    implementation("androidx.appcompat:appcompat:$appcompat_version")
+    // For loading and tinting drawables on older versions of the platform
+    implementation("androidx.appcompat:appcompat-resources:$appcompat_version")
 }
