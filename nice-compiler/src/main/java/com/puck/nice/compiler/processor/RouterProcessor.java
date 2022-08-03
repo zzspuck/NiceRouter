@@ -12,6 +12,7 @@ import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.ParameterSpec;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeSpec;
+import com.squareup.javapoet.WildcardTypeName;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -138,6 +139,51 @@ public class RouterProcessor extends AbstractProcessor {
         TypeElement iRouteRoot = elementUtils.getTypeElement(Constant.IROUTE_ROOT);
         // 生成Group记录分组表
         generatedGroup(iRouteGroup);
+
+        // 生成Root 类 作用：记录<分组，对应的Group类>
+        generatedRoot(iRouteRoot, iRouteGroup);
+    }
+
+    /**
+     * 生成Root类  作用：记录<分组，对应的Group类>
+     *
+     * @param iRouteRoot
+     * @param iRouteGroup
+     */
+    private void generatedRoot(TypeElement iRouteRoot, TypeElement iRouteGroup) {
+        //创建参数类型 Map<String,Class<? extends IRouteGroup>> routes>
+        //Wildcard 通配符
+        ParameterizedTypeName parameterizedTypeName = ParameterizedTypeName.get(
+                ClassName.get(Map.class),
+                ClassName.get(String.class),
+                ParameterizedTypeName.get(
+                        ClassName.get(Class.class),
+                        WildcardTypeName.subtypeOf(ClassName.get(iRouteGroup))
+                )
+        );
+        //参数 Map<String,Class<? extends IRouteGroup>> routes> routes
+        ParameterSpec parameter = ParameterSpec.builder(parameterizedTypeName, "routes").build();
+        //函数 public void loadInfo(Map<String,Class<? extends IRouteGroup>> routes> routes)
+        MethodSpec.Builder methodBuilder = MethodSpec.methodBuilder(Constant.METHOD_LOAD_INTO)
+                .addModifiers(Modifier.PUBLIC)
+                .addAnnotation(Override.class)
+                .addParameter(parameter);
+        for (Map.Entry<String, String> entry : rootMap.entrySet()) {
+           methodBuilder.addStatement("routes.put($S, $T.class)", entry.getKey(),ClassName.get(Constant.PACKAGE_OF_GENERATE_FILE, entry.getValue()));
+        }
+        //生成$Root$类
+        String className = Constant.NAME_OF_ROOT + moduleName;
+        TypeSpec typeSpec = TypeSpec.classBuilder(className)
+                .addSuperinterface(ClassName.get(iRouteRoot))
+                .addModifiers(Modifier.PUBLIC)
+                .addMethod(methodBuilder.build())
+                .build();
+        try {
+            JavaFile.builder(Constant.PACKAGE_OF_GENERATE_FILE, typeSpec).build().writeTo(filerUtils);
+            log.i("Generated RouteRoot：" + Constant.PACKAGE_OF_GENERATE_FILE + "." + className);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private void generatedGroup(TypeElement iRouteGroup) {
@@ -148,7 +194,7 @@ public class RouterProcessor extends AbstractProcessor {
                 ClassName.get(RouteMeta.class));
         ParameterSpec atlas = ParameterSpec.builder(parameterizedTypeName, "atlas").build();
         //  void loadInto(Map<String, RouteMeta> atlas);
-        for (Map.Entry<String, List<RouteMeta>> entry: groupMap.entrySet()){
+        for (Map.Entry<String, List<RouteMeta>> entry : groupMap.entrySet()) {
             MethodSpec.Builder methodBuilder = MethodSpec.methodBuilder(Constant.METHOD_LOAD_INTO)
                     .addModifiers(Modifier.PUBLIC)
                     .addAnnotation(Override.class)
@@ -156,7 +202,7 @@ public class RouterProcessor extends AbstractProcessor {
 
             String groupName = entry.getKey();
             List<RouteMeta> groupData = entry.getValue();
-            for (RouteMeta routeMeta:groupData){
+            for (RouteMeta routeMeta : groupData) {
                 // 函数体添加
                 methodBuilder.addStatement("atlas.put($S,$T.build($T.$L,$T.class,$S,$S))",
                         routeMeta.getPath(),
@@ -177,10 +223,10 @@ public class RouterProcessor extends AbstractProcessor {
                     .build();
             JavaFile javaFile = JavaFile.builder(Constant.PACKAGE_OF_GENERATE_FILE, typeSpec).build();
             try {
-            javaFile.writeTo(filerUtils);
-        }catch (IOException e) {
-            e.printStackTrace();
-        }
+                javaFile.writeTo(filerUtils);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
             rootMap.put(groupName, groupClassName);
         }
     }
