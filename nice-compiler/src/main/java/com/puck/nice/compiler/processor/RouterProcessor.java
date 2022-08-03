@@ -7,15 +7,19 @@ import com.puck.nice.compiler.utils.Constant;
 import com.puck.nice.compiler.utils.Log;
 import com.puck.nice.compiler.utils.Utils;
 import com.squareup.javapoet.ClassName;
+import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.ParameterSpec;
 import com.squareup.javapoet.ParameterizedTypeName;
+import com.squareup.javapoet.TypeSpec;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.Filer;
@@ -66,6 +70,11 @@ public class RouterProcessor extends AbstractProcessor {
      * 分组 key:组名 value:对应组的路由信息
      */
     private Map<String, List<RouteMeta>> groupMap = new HashMap<>();
+
+    /**
+     * key:组名 value:类名
+     */
+    private Map<String, String> rootMap = new TreeMap<>();
 
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
@@ -149,9 +158,8 @@ public class RouterProcessor extends AbstractProcessor {
             List<RouteMeta> groupData = entry.getValue();
             for (RouteMeta routeMeta:groupData){
                 // 函数体添加
-                methodBuilder.addStatement("atlas.put(" +
-                                ",$T.build($T.$L,$T.class,$S,$S))",
-                        routeMeta.getGroup(),
+                methodBuilder.addStatement("atlas.put($S,$T.build($T.$L,$T.class,$S,$S))",
+                        routeMeta.getPath(),
                         ClassName.get(RouteMeta.class),
                         ClassName.get(RouteMeta.Type.class),
                         routeMeta.getType(),
@@ -160,6 +168,20 @@ public class RouterProcessor extends AbstractProcessor {
                         routeMeta.getGroup());
             }
 
+            String groupClassName = Constant.NAME_OF_GROUP + groupName;
+
+            TypeSpec typeSpec = TypeSpec.classBuilder(groupClassName)
+                    .addSuperinterface(ClassName.get(iRouteGroup))
+                    .addModifiers(Modifier.PUBLIC)
+                    .addMethod(methodBuilder.build())
+                    .build();
+            JavaFile javaFile = JavaFile.builder(Constant.PACKAGE_OF_GENERATE_FILE, typeSpec).build();
+            try {
+            javaFile.writeTo(filerUtils);
+        }catch (IOException e) {
+            e.printStackTrace();
+        }
+            rootMap.put(groupName, groupClassName);
         }
     }
 
