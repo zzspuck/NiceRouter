@@ -41,7 +41,7 @@ import javax.lang.model.util.Types;
  */
 @AutoService(Processor.class)
 @SupportedOptions(Constant.ARGUMENTS_NAME)
-@SupportedSourceVersion(SourceVersion.RELEASE_7)
+@SupportedSourceVersion(SourceVersion.RELEASE_8)
 @SupportedAnnotationTypes(Constant.ANNOTATION_TYPE_INTERCEPTOR)
 public class InterceptorProcessor extends AbstractProcessor {
 

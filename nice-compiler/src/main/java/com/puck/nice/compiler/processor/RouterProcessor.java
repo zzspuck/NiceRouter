@@ -51,6 +51,7 @@ import javax.lang.model.util.Types;
  * 注册给哪些注解的  替代 {@link AbstractProcessor#getSupportedAnnotationTypes()} 函数
  */
 @SupportedAnnotationTypes(Constant.ANNOTATION_TYPE_ROUTE)
+@SupportedSourceVersion(SourceVersion.RELEASE_8)
 public class RouterProcessor extends AbstractProcessor {
     private Log log;
 
